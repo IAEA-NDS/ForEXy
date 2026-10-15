@@ -35,7 +35,7 @@ DICJ2T | Convert a JSON Dictionary to a Transmission dictionary.
 DIRINI | Split an EXFOR library tape into EXFOR entry files.
 DIRUPD | Update the EXFOR entry files with an EXFOR transmission tape.
 EXTMUL | Extraction of a dataset from a multiple reaction formalism subentry.
-j4TOC6 | Convert a J4 file to a C6 or C4 file
+J4TOC6 | Convert a J4 file to a C6 or C4 file
 J4TOX4 | Convert a J4 file to an EXFOR file.
 J4VIEW | Convert a J4 file to an HTML file.
 LOTRAN | Lorentz transformation for a differential cross section data point

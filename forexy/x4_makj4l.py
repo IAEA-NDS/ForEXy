@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.02"
 ############################################################
-# MAKJ4L Ver.2026.09.26
+# MAKJ4L Ver.2026.10.02
 # (Utility for production and update of J4 file storage)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -149,13 +149,14 @@ def make_j4(file_x4,dir_storage,file_dict,dir_j4lib,force):
   else:
     print("creating ..."+file_j4)
 
+  data_id  ="all"
   key_keep =["all"]
   chkrid   = False
   add19    = True
   keepflg  = False
   outstr   = False
 
-  x4_x4toj4.main(file_x4,file_dict,file_j4,key_keep,email,force,chkrid,add19,keepflg,outstr)
+  x4_x4toj4.main(file_x4,file_dict,data_id,file_j4,key_keep,email,force,chkrid,add19,keepflg,outstr)
 
   return
 

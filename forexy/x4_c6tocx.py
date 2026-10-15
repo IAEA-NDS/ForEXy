@@ -1,13 +1,14 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.15"
 ############################################################
-# C6TOCX Ver.2026.09.26
+# C6TOCX Ver.2026.10.15
 # (Utility for production and update of CX4 file storage)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
 ############################################################
 import argparse
 import datetime
+import glob
 import os
 import re
 import time
@@ -22,25 +23,88 @@ def c6tocx():
   main(*get_input(args))
 
 
-def main(file_c6,file_dict,file_cx4,file_idx,sysout0,force0):
+def main(dir_c6,file_dict,entry,dir_cx4,file_idx,sysout0,force0,exclhi):
+  time_start=time.time()
+
   global sysout
   global force
   sysout=sysout0
   force=force0
 
-  time_start=time.time()
+  if entry=="all":
+    pattern=dir_c6+"/[a-z0-9][0-9][0-9][0-9][0-9].[0-9][0-9][0-9]*_[0-9][0-9][0-9][0-9].c6"
+  else:
+    pattern=dir_c6+"/"+entry+".[0-9][0-9][0-9]*_[0-9][0-9][0-9][0-9].c6"
+  all_files=glob.glob(pattern)
+  files=[file for file in all_files if re.search(r"\d\d\d(\.[A-Z1-9])?", file)]
+  files=sorted(files)
+  if entry!="all" and len(files)==0:
+    msg="C6 file for EXFOR Entry "+entry+" does not exist."
+    print_error_fatal(msg,"")
+  
 
-  print("processing ... "+file_c6)
+  for nfile, file_c6 in enumerate(files):
+    print("processing ... "+file_c6)
+    
+    m=re.search(r"([0-8a-z]\d{4}\.\d{3}(\.[0-9a-z])?)-(.+?)\.c6",file_c6)
+    if m:
+      file1=m.group(1)
+      file1=file1.upper()
+      file2=m.group(3)
+      n=re.search(r"^(.+?)\-",file2)
+      proj=n.group(1)
+      if not re.compile(r"^(g|n|p|d|t|h|a)$").search(proj) and exclhi==True:
+        msg=file1+" Projectile "+proj+" is a heavy-ion. Not converted."
+        print_error(msg,"",True)
+        continue
+      file_cx4=dir_cx4+"/"+file2+"_"+file1+".cx4"
+    else:
+      msg="Input C6 file does not follow the standard naming convention."
+      print_error_fatal(msg,file_c6)
 
-  (tid,quan,dist,line_preamble,line_const,line_head,line_unit,line_data,x,y)=read_c6(file_c6,file_dict)
+    if os.path.isfile(file_cx4):
+      msg="File '"+file_cx4+"' exists and must be overwritten."
+      print_error(msg,"",force0)
 
-  if len(x)>0:
-    (npts,xmin,xmax,ymin,ymax)=print_cx4(file_cx4,dist,line_preamble,line_const,line_head,line_unit,line_data,x,y)
-    print_idx(file_c6,file_idx,tid,quan,dist,npts,xmin,xmax,ymin,ymax)
+    cx4able=check_c6_dist_quan(file_c6)
+
+    if cx4able==True:
+      (tid,quan,dist,line_preamble,line_const,line_head,line_unit,line_data,x,y)=read_c6(file_c6,file_dict)
+    
+    if len(x)>0:
+      (npts,xmin,xmax,ymin,ymax)=print_cx4(file_cx4,dist,line_preamble,line_const,line_head,line_unit,line_data,x,y)
+      print_idx(file_c6,file_idx,tid,quan,dist,npts,xmin,xmax,ymin,ymax)
 
   time_end=time.time()
   time_elapsed=format(time_end-time_start, ".2f")
   print("C6TOCX: Processing terminated normally. "+time_elapsed+" sec.\n")
+
+
+def check_c6_dist_quan(file_c6):
+  m=re.compile(r"([0-8a-z]\d{4}\.\d{3}(\.[0-9a-z])?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?\d\d\d\d)\.c6$").search(file_c6)
+  if not m:
+    msg=file_c6+": Conversion skipped. Unexpected file name structure."
+    print_error(msg,"",force)
+    return
+  quan=m.group(6)
+  dist=m.group(7)
+
+  if dist=="othdis":
+    msg=file_c6+": Conversion skipped. Distribution type othdis is not supported in CX4."
+    print_error(msg,"",force)
+    cx4able=False
+    return cx4able
+
+  elif dist=="lvldis":
+    if quan=="edxl" or quan=="edxc" or quan=="ddxl" or quan=="ddxc":
+      msg=file_c6+": Conversion skipped. Distribution type lvldis is not supported for EDX and DDX in CX4."
+      print_error(msg,"",force)
+      cx4able=False
+      return cx4able
+
+  else:
+    cx4able=True
+    return cx4able
 
 
 def read_c6(file_c6,file_dict):
@@ -51,11 +115,6 @@ def read_c6(file_c6,file_dict):
   y=[]
 
   m=re.compile(r"([0-8a-z]\d{4}\.\d{3}(\.[0-9a-z])?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?\d\d\d\d)\.c6$").search(file_c6)
-  if not m:
-    msg=file_c6+": Conversion skipped. Unexpected file name structure."
-    print_error(msg,"",force)
-    return
-
   ansan=m.group(1)
   proj=m.group(3)
   targ=m.group(4)
@@ -64,11 +123,6 @@ def read_c6(file_c6,file_dict):
   dist=m.group(7)
   spec=m.group(8)
   const=m.group(9)
-
-  if dist=="othdis":
-    msg=file_c6+": Conversion skipped. The distribution type is othdis."
-    print_error(msg,"",force)
-    return
 
   if dist=="excfun":
     col_ini=22
@@ -452,6 +506,7 @@ def make_line_const(line,const):
         const_inp["F"]=float(value)
 
     elif const.startswith("elvl"):
+      frame_inp["E"]="?"
       value=print_float(line[76:85])
       value="%12.4E" % float(value)
       line_const.append("# Elvl (eV)       : "+value)
@@ -582,7 +637,7 @@ def make_line_data(file_dict,j,ansan,line,quan,dist,col_ini,lorentz,sf1,sf2,sf3,
     value_inp[" "]=values[3]
 
     if quan=="adxc" or quan=="adxl":
-      (skip,value_out)=x4_lotran.main(file_dict,"",j,ansan,"ADX",sf1,sf2,sf3,sf4,value_inp,frame_inp,frame_out)
+      (skip,value_out)=x4_lotran.main(file_dict,"",j,ansan,"ADX",sf1,sf2,sf3,sf4,value_inp,frame_inp,frame_out,force)
       if skip:
          char=""
          x_float=None
@@ -594,7 +649,7 @@ def make_line_data(file_dict,j,ansan,line,quan,dist,col_ini,lorentz,sf1,sf2,sf3,
         values[2]=value_out["*"]
         values[3]=value_out[" "]
     elif quan=="ddxc" or quan=="ddxl":
-      (skip,value_out)=x4_lotran.main(file_dict,"",j,ansan,"DDX",sf1,sf2,sf3,sf4,value_inp,frame_inp,frame_out)
+      (skip,value_out)=x4_lotran.main(file_dict,"",j,ansan,"DDX",sf1,sf2,sf3,sf4,value_inp,frame_inp,frame_out,force)
       if skip:
          char=""
          x_float=None
@@ -656,23 +711,25 @@ def print_float(value):
 def get_args(ver):
   parser=argparse.ArgumentParser(\
    usage="Convert C6 file to CX4 file",\
-   epilog="example: x4_c6tocx.py -i 10003.002-n-Ti-tot-sig-excfun-mon-Schwartz_1974.c6 -a")
+   epilog="example: x4_c6tocx.py -i c6 -e 22742")
   parser.add_argument("-v", "--version",\
    action="version", version=ver)
-  parser.add_argument("-i", "--file_c6",\
-   help="input C6 file")
+  parser.add_argument("-i", "--dir_c6",\
+   help="directory of input C6 files")
   parser.add_argument("-d", "--file_dict",\
    help="input JSON Dictionary (optional, default: dict.json)", default="dict.json")
-  parser.add_argument("-o", "--file_cx4",\
-   help="output CX4 file")
+  parser.add_argument("-e", "--entry",\
+   help="EXFOR Entry number ('all' to process all files in the input directory)")
+  parser.add_argument("-o", "--dir_cx4",\
+   help="output CX4 directory")
   parser.add_argument("-n", "--file_idx",\
    help="output index file (optional, default: x4_c6tocx.txt)", default="x4_c6tocx.txt")
   parser.add_argument("-s", "--sysout",\
    help="output reference system identifier (optional, default: OOO)", default="OOO")
   parser.add_argument("-f", "--force",\
    help="never prompt", action="store_true")
-  parser.add_argument("-a", "--auto",\
-   help="adopt standard CX4 file naming", action="store_true")
+  parser.add_argument("-x", "--exclhi",\
+   help="do not convert heavy-ion induced reaction data", action="store_true")
 
   args=parser.parse_args()
   return args
@@ -685,20 +742,24 @@ def get_input(args):
   print("-----------------------------------------")
 
   force0=args.force
-  auto=args.auto
+  exclhi=args.exclhi
 
-  file_c6=args.file_c6
-  if file_c6 is None:
-    file_c6=input("input C6 file --------------------> ")
-  if not os.path.exists(file_c6):
-    print(" ** File "+file_c6+" does not exist.")
-  while not os.path.exists(file_c6):
-    file_c6=input("input C6 file --------------------> ")
-    if not os.path.exists(file_c6):
-      print(" ** File "+file_c6+" does not exist.")
+  dir_c6=args.dir_c6
+  if dir_c6 is None:
+    dir_c6=input("Directory of input C6 files [c6] --------> ")
+    if dir_c6=="":
+      dir_c6="c6"
+  if not os.path.exists(dir_c6):
+    print(" ** Directory "+dir_c6+" does not exist.")
+  while not os.path.exists(dir_c6):
+    dir_c6=input("Directory of input C6 files [c6] --------> ")
+    if dir_c6=="":
+      dir_c6="c6"
+    if not os.path.exists(dir_c6):
+      print(" ** Directory "+dir_c6+" does not exist.")
 
   file_dict=args.file_dict
-  print("JSON Dictionary ------------------> "+file_dict)
+  print("JSON Dictionary -------------------------> "+file_dict)
   if not os.path.exists(file_dict):
     print(" ** File "+file_dict+" does not exist.")
   while not os.path.exists(file_dict):
@@ -708,26 +769,53 @@ def get_input(args):
     if not os.path.exists(file_dict):
       print(" ** File "+file_dict+" does not exist.")
 
-  file_cx4=args.file_cx4
-  if file_cx4 is None:
-    m=re.search(r"([0-8a-z]\d{4}\.\d{3}(\.[0-9a-z])?)-(.+?)\.c6",file_c6)
-    if m:
-      if auto:
-        file1=m.group(1)
-        file1=file1.upper()
-        file2=m.group(3)
-        file_cx4=file2+"_"+file1+".cx4"
-        print("output CX4 file ------------------> "+file_cx4)
-      else:
-        file_cx4=input("output CX4 file [exfor.cx4] ------> ")
-        if file_cx4=="":
-          file_cx4="exfor.cx4"
+  entry=args.entry
+  if entry is None:
+    entry=input("EXFOR Entry # [all] ---------------------> ")
+    if entry=="":
+      entry="all"
+  entry_lower=entry.lower()
+  if entry=="all":
+    pattern=dir_c6+"/[a-z0-9][0-9][0-9][0-9][0-9].[0-9][0-9][0-9]*_[0-9][0-9][0-9][0-9].c6"
+  else:
+    pattern=dir_c6+"/"+entry_lower+".[0-9][0-9][0-9]*_[0-9][0-9][0-9][0-9].c6"
+  all_files=glob.glob(pattern)
+  files = [file for file in all_files if re.search(r"\d\d\d(\.[A-Z1-9])?", file)]
+  if len(files)==0:
+    if entry=="all":
+      print(" ** C6 file does not exist.")
     else:
-      msg="Input C6 file does not follow the standard naming convention."
-      print_error_fatal(msg,file_c6)
-  if os.path.isfile(file_cx4):
-    msg="File '"+file_cx4+"' exists and must be overwritten."
+      print(" ** C6 file for EXFOR Entry "+entry+" does not exist.")
+  while len(files)==0:
+    entry=input("EXFOR Entry # [all] ---------------------> ")
+    if entry=="":
+      entry="all"
+    entry_lower=entry.lower()
+    if entry=="all":
+      pattern=dir_c6+"/[a-z0-9][0-9][0-9][0-9][0-9].[0-9][0-9][0-9]*_[0-9][0-9][0-9][0-9].c6"
+    else:
+      pattern=dir_c6+"/"+entry_lower+".[0-9][0-9][0-9]*_[0-9][0-9][0-9][0-9].c6"
+    all_files=glob.glob(pattern)
+    files = [file for file in all_files if re.search(r"\d\d\d(\.[A-Z1-9])?", file)]
+    if len(files)==0:
+      if entry=="all":
+        print(" ** C6 file does not exist.")
+      else:
+        print(" ** C6 file for EXFOR Entry "+entry+" does not exist.")
+  entry=entry.lower()
+
+  dir_cx4=args.dir_cx4
+  if dir_cx4 is None:
+    dir_cx4=input("Directory of output CX4 files [cx4] -----> ")
+  if dir_cx4=="":
+    dir_cx4="cx4"
+  if os.path.isdir(dir_cx4):
+    msg="Directory '"+dir_cx4+"' exists and must be overwritten."
     print_error(msg,"",force0)
+  else:
+    msg="Directionry '"+dir_cx4+"' does not exist and must be created."
+    print_error(msg,"",force0)
+    os.mkdir(dir_cx4)
 
   file_idx=args.file_idx
   print("output index file ----------------> "+file_idx)
@@ -755,7 +843,7 @@ def get_input(args):
 
   print("\n")
 
-  return file_c6,file_dict,file_cx4,file_idx,sysout,force0
+  return dir_c6,file_dict,entry,dir_cx4,file_idx,sysout,force0,exclhi
 
 
 def print_error_fatal(msg,line):

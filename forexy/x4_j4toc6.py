@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.15"
 ############################################################
-# J4TOC6 Ver.2026.09.26
+# J4TOC6 Ver.2026.10.15
 # (Utility to convert J4 to C6)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -37,11 +37,13 @@ alpha = 0.0072973525643    # fine-structure constant (PDG2025)
 hbarc = 197.3269804E+06    # hbar*c (PDG2025)
 pi    = math.pi
 
+
 def j4toc6():
   args=get_args(ver)
   main(*get_input(args))
 
-def main(dir_j4,file_dict,entry,file_out,seplvl0,file_idx,sysout0,enewid0,force0,exclhi0,incder0,c4out0):
+
+def main(dir_j4,file_dict,entry,file_c6,seplvl0,file_idx,sysout0,enewid0,force0,exclhi0,incder0,c4out0):
   time_start=time.time()
 
   global seplvl
@@ -71,12 +73,15 @@ def main(dir_j4,file_dict,entry,file_out,seplvl0,file_idx,sysout0,enewid0,force0
 
   l_tot=0 # number of datasets converted
 
-  pattern=dir_j4+"/"+entry+".[0-9][0-9][0-9]*.json"
+  if entry=="all":
+    pattern=dir_j4+"/[a-z0-9][0-9][0-9][0-9][0-9].[0-9][0-9][0-9]*.json"
+  else:
+    pattern=dir_j4+"/"+entry+".[0-9][0-9][0-9]*.json"
   all_files=glob.glob(pattern)
   files=[file for file in all_files if re.search(r"\d\d\d(\.[A-Z1-9])?\.json", file)]
   files=sorted(files)
   if len(files)==0:
-    msg="JSON file for EXFOR Entry "+entry+" does not exist."
+    msg="J4 file for EXFOR Entry "+entry+" does not exist."
     print_error_fatal(msg,"")
 
   dict_json=read_dict(file_dict)
@@ -89,13 +94,14 @@ def main(dir_j4,file_dict,entry,file_out,seplvl0,file_idx,sysout0,enewid0,force0
     l.write("#---------- ----- ---- ---- ---- -------- -------- ----- ----------------------------\n")
 
   if seplvl==1:
-    f=open(file_out,"w")
+    f=open(file_c6,"w")
   else:
-    dir_out=file_out
+    dir_out=file_c6
 
   header_c4_out=True # becomes False when the header is printed
 
   for nfile, file_j4 in enumerate(files):
+    print("processing ... "+file_j4)
     m=re.search(r"([1-9a-z]\d{4,4}\.\d{3,3})(\.[A-Z1-9])?\.json$", file_j4)
     ansan=m.group(1)
     if m.group(2) is None:
@@ -107,9 +113,9 @@ def main(dir_j4,file_dict,entry,file_out,seplvl0,file_idx,sysout0,enewid0,force0
 
     if seplvl==2 or seplvl==3:
       ansan=ansan.lower()
-      file_out=dir_out+"/"+ansan
-      file_out=re.sub(r"  $","",file_out)
-      f=open(file_out,"w")
+      file_c6=dir_out+"/"+ansan
+      file_c6=re.sub(r"  $","",file_c6)
+      f=open(file_c6,"w")
       header_c4_out=True
 
     ansan_out=ansan.upper()
@@ -128,11 +134,12 @@ def main(dir_j4,file_dict,entry,file_out,seplvl0,file_idx,sysout0,enewid0,force0
         msg="Input J4 file should be made from an entry file and should not contain a "+keyword+ "record.\n"
         print_error_fatal(msg,"")
    
-    (f,k_tot,l_tot,header_c4_out)=print_subent(f,l,file_dict,file_out,tid,ansan_out,x4_json["entries"][0]["subentries"][0],nfile,pointer,header_c4_out,l_tot)
+    (f,k_tot,l_tot,header_c4_out)=print_subent(f,l,file_dict,file_c6,tid,ansan_out,x4_json["entries"][0]["subentries"][0],nfile,pointer,header_c4_out,l_tot)
 
     if seplvl==2 or seplvl==3:
-      if k_tot==0 and os.path.isfile(file_out):
-        os.remove(file_out)
+      if k_tot==0 and os.path.isfile(file_c6):
+        f.close()
+        os.remove(file_c6)
 
 
   if seplvl==1:
@@ -142,9 +149,8 @@ def main(dir_j4,file_dict,entry,file_out,seplvl0,file_idx,sysout0,enewid0,force0
         f.write("#\n")
         f.write("#\n")
     f.close()
-
     if l_tot==0:
-      os.remove(file_out)
+      os.remove(file_c6)
 
   l.close()
 
@@ -154,7 +160,7 @@ def main(dir_j4,file_dict,entry,file_out,seplvl0,file_idx,sysout0,enewid0,force0
   print("J4TOC6: Processing terminated normally. "+time_elapsed+" sec.\n")
 
 
-def print_subent(f,l,file_dict,file_out,tid,ansan_out,x4_json,nfile,pointer,header_c4_out,l_tot):
+def print_subent(f,l,file_dict,file_c6,tid,ansan_out,x4_json,nfile,pointer,header_c4_out,l_tot):
   keywords=["SUBENT"
            ,"ENDSUBENT"
            ,"NOSUBENT"
@@ -181,7 +187,7 @@ def print_subent(f,l,file_dict,file_out,tid,ansan_out,x4_json,nfile,pointer,head
     an=char[0:5]
     san=char[5:8]
     if an!=ansan_out[0:5] or san!=ansan_out[6:9]:
-      msg=ansan_out+" SUBENT record inconsistent with the input JSON file name"
+      msg=ansan_out+" SUBENT record inconsistent with the input J4 file name"
       print_error_fatal(msg,"")
 
     subent_n2=str(x4_json["SUBENT"]["N2"])
@@ -332,7 +338,7 @@ def print_subent(f,l,file_dict,file_out,tid,ansan_out,x4_json,nfile,pointer,head
       if sf3!="X" and ("E" not in value_out or field_E=="LVL"): # two-body cross section without outgoing energy as a variable
         (lorentz,frame_out)=get_outputframe(mf,frame_inp)
         if lorentz:
-          (skip,value_out)=x4_lotran.main(file_dict,"",j,ansan_out,"ADX",sf1,sf2,sf3,sf4,value_out,frame_inp,frame_out)
+          (skip,value_out)=x4_lotran.main(file_dict,"",j,ansan_out,"ADX",sf1,sf2,sf3,sf4,value_out,frame_inp,frame_out,force)
           if skip:
             continue  # skip the data point (e.g., two pcm found for a plab during Lorentz transformation)
     
@@ -340,13 +346,13 @@ def print_subent(f,l,file_dict,file_out,tid,ansan_out,x4_json,nfile,pointer,head
       if sf3=="X" and ("E" in value_out and field_E=="E2"):     # inclusive cross section with outgoing energy as a variable
         (lorentz,frame_out)=get_outputframe(mf,frame_inp)
         if lorentz:
-          (skip,value_out)=x4_lotran.main(file_dict,"",j,ansan_out,"DDX",sf1,sf2,sf3,sf4,value_out,frame_inp,frame_out)
+          (skip,value_out)=x4_lotran.main(file_dict,"",j,ansan_out,"DDX",sf1,sf2,sf3,sf4,value_out,frame_inp,frame_out,force)
           if skip:
             continue  # skip the data point (e.g., two pcm found for a plab during Lorentz transformation)
 
 # print
     quantity=expand_reaction(mf,mt,sf1,sf2,sf3,sf4,sf5)
-    (f,header_out,header_c4_out,header4_last,constant_last,printed,k_tot)=print_data(j,f,file_out,ansan_out,subent_n2,trans_id,author,year,reference_code,reference_exp,doi,quantity,line_l,line_r,header_out,header_c4_out,mf,mt,spec,sf1,sf2,sf4,sf5,elemmass,value_out,frame_inp,frame_out,field_E,family_constant,family_running,header4_last,constant_last,x4_json,k_tot)
+    (f,header_out,header_c4_out,header4_last,constant_last,printed,k_tot)=print_data(j,f,file_c6,ansan_out,subent_n2,trans_id,author,year,reference_code,reference_exp,doi,quantity,line_l,line_r,header_out,header_c4_out,mf,mt,spec,sf1,sf2,sf4,sf5,elemmass,value_out,frame_inp,frame_out,field_E,family_constant,family_running,header4_last,constant_last,x4_json,k_tot)
     if printed:
       k_tot+=1
       family_running_last=family_running
@@ -368,22 +374,22 @@ def print_subent(f,l,file_dict,file_out,tid,ansan_out,x4_json,nfile,pointer,head
   if seplvl==2 or seplvl==3:
     f.close()
     if k_tot==0: # empty file
-      os.remove(file_out)
+      os.remove(file_c6)
     else:
-      (file_out_pre,prod_const)=make_file_out_pre(sf1,sf2,line_l,family_running_last,field_E_last,frame_out_last,spec)
-      file_out_new=file_out+file_out_pre
+      (file_c6_pre,prod_const)=make_file_c6_pre(sf1,sf2,line_l,family_running_last,field_E_last,frame_out_last,spec)
+      file_c6_new=file_c6+file_c6_pre
       constant=get_authoryear(author,year)
       if seplvl==3:
         if prod_const!="":
           constant="prod"+prod_const+"_"+constant
         if constant_last!="":
           constant=constant_last+"_"+constant
-      file_out_new+="-"+constant
+      file_c6_new+="-"+constant
       if c4out:
-        file_out_new+=".c4"
+        file_c6_new+=".c4"
       else:
-        file_out_new+=".c6"
-      shutil.move(file_out,file_out_new)
+        file_c6_new+=".c6"
+      shutil.move(file_c6,file_c6_new)
 
   return f,k_tot,l_tot,header_c4_out
 
@@ -551,7 +557,7 @@ def get_reactionsubfield(ansan_out,x4_json_reaction):
       genq="/".join(genqs_new)
 
   if genq is not None and genq!="AV": # Only A, DAM or AV are GENQ for conversion
-    msg=ansan_out+" Unsupported general quantity modifier"+genq
+    msg=ansan_out+" Unsupported general quantity modifier "+genq
     print_error(msg,"",True)
     return skip,reaction_code,web_quantity,sf1,sf2,sf3,sf4,sf5,sf6,sf7,sf8,spec,operation3
 
@@ -1672,7 +1678,7 @@ def make_constant_text(value_out,family_constant,sf4_za,sf4_iso_char,frame_out,f
   return constant_text
 
 
-def print_data(j,f,file_out,ansan_out,subent_n2,trans_id,author,year,reference_code,reference_exp,doi,quantity,line_l,line_r,header_out,header_c4_out,mf,mt,spec,sf1,sf2,sf4,sf5,elemmass,value_out,frame_inp,frame_out,field_E,family_constant,family_running,header4_last,constant_last,x4_json,k_tot):
+def print_data(j,f,file_c6,ansan_out,subent_n2,trans_id,author,year,reference_code,reference_exp,doi,quantity,line_l,line_r,header_out,header_c4_out,mf,mt,spec,sf1,sf2,sf4,sf5,elemmass,value_out,frame_inp,frame_out,field_E,family_constant,family_running,header4_last,constant_last,x4_json,k_tot):
   (flag_cm,header3)=get_flag_cm(mf,mt,frame_inp,frame_out)
 
   printed=False
@@ -2002,20 +2008,20 @@ def print_data(j,f,file_out,ansan_out,subent_n2,trans_id,author,year,reference_c
         f.write("\n")
       if seplvl==3:
         f.close()
-        (file_out_pre,prod_const)=make_file_out_pre(sf1,sf2,line_l,family_running,field_E,frame_out,spec)
-        file_out_new=file_out+file_out_pre
+        (file_c6_pre,prod_const)=make_file_c6_pre(sf1,sf2,line_l,family_running,field_E,frame_out,spec)
+        file_c6_new=file_c6+file_c6_pre
         constant=get_authoryear(author,year)
         if prod_const!="":
           constant="prod"+prod_const+"_"+constant
         if constant_last!="":
           constant=constant_last+"_"+constant
-        file_out_new+="-"+constant
+        file_c6_new+="-"+constant
         if c4out:
-          file_out_new+=".c4"
+          file_c6_new+=".c4"
         else:
-          file_out_new+=".c6"
-        shutil.move(file_out,file_out_new)
-        f=open(file_out,"w")
+          file_c6_new+=".c6"
+        shutil.move(file_c6,file_c6_new)
+        f=open(file_c6,"w")
         if c4out:
           print_header_c4_top(f,ansan_out,x4_json,reference_code,reference_exp,doi,year)
 
@@ -2127,7 +2133,7 @@ def convert_mt_to_zasum(mt):
   return reac
 
 
-def make_file_out_pre(sf1,sf2,line_l,family_running,field_E,frame_out,spec):
+def make_file_c6_pre(sf1,sf2,line_l,family_running,field_E,frame_out,spec):
   m=re.compile(r"^(\d+)\-([A-Z][A-Z0]?|\*)\-(\d+)(\-[GML][0-9]?)?$").search(sf1)
   targ_z=m.group(1)
   targ_a=m.group(3)
@@ -2287,9 +2293,9 @@ def make_file_out_pre(sf1,sf2,line_l,family_running,field_E,frame_out,spec):
   else:
     dist="othdis"
 
-  file_out_pre="-"+proj+"-"+targ+"-"+reac+"-"+quan+"-"+dist+"-"+spec_text
+  file_c6_pre="-"+proj+"-"+targ+"-"+reac+"-"+quan+"-"+dist+"-"+spec_text
 
-  return file_out_pre,prod_const
+  return file_c6_pre,prod_const
 
 
 def print_header_c4(f,ansan_out,x4_json,line_l,sf4):
@@ -3088,7 +3094,6 @@ def read_x4json(file_x4):
     print_error_fatal(msg,"")
 
   f.close()
-
   return x4_json
 
 
@@ -3104,6 +3109,7 @@ def read_dict(file_dict):
     msg=file_dict+" is not an EXFOR/CINDA Dictionary in JSON."
     print_error_fatal(msg,"")
 
+  f.close()
   return dict_json
 
 
@@ -3118,8 +3124,8 @@ def get_args(ver):
   parser.add_argument("-d", "--file_dict",\
    help="input JSON dictionary (optional, default: dict.json)", default="dict.json")
   parser.add_argument("-e", "--entry",\
-   help="EXFOR Entry number")
-  parser.add_argument("-o", "--file_out",\
+   help="EXFOR Entry number ('all' to process all files in the input directory)")
+  parser.add_argument("-o", "--file_c6",\
    help="output C6 file/directory")
   parser.add_argument("-l", "--seplvl",\
    help="output separation level 1, 2 or 3 (optional, default: 3)", default="3")
@@ -3180,25 +3186,37 @@ def get_input(args):
 
   entry=args.entry
   if entry is None:
-    entry=input("EXFOR Entry # [22742] -------------------> ")
+    entry=input("EXFOR Entry # [all] ---------------------> ")
     if entry=="":
-      entry="22742"
+      entry="all"
   entry_lower=entry.lower()
-  pattern=dir_j4+"/"+entry_lower+".[0-9][0-9][0-9]*.json"
+  if entry=="all":
+    pattern=dir_j4+"/[a-z0-9][0-9][0-9][0-9][0-9].[0-9][0-9][0-9]*.json"
+  else:
+    pattern=dir_j4+"/"+entry_lower+".[0-9][0-9][0-9]*.json"
   all_files=glob.glob(pattern)
   files = [file for file in all_files if re.search(r"\d\d\d(\.[A-Z1-9])?", file)]
   if len(files)==0:
-    print(" ** JSON file for EXFOR Entry "+entry+" does not exist.")
+    if entry=="all":
+      print(" ** J4 file does not exist.")
+    else:
+      print(" ** J4 file for EXFOR Entry "+entry+" does not exist.")
   while len(files)==0:
-    entry=input("EXFOR Entry # [22742] -------------------> ")
+    entry=input("EXFOR Entry # [all] ---------------------> ")
     if entry=="":
-      entry="22742"
+      entry="all"
     entry_lower=entry.lower()
-    pattern=dir_j4+"/"+entry_lower+".[0-9][0-9][0-9]*.json"
+    if entry=="all":
+      pattern=dir_j4+"/[a-z0-9][0-9][0-9][0-9][0-9].[0-9][0-9][0-9]*.json"
+    else:
+      pattern=dir_j4+"/"+entry_lower+".[0-9][0-9][0-9]*.json"
     all_files=glob.glob(pattern)
     files = [file for file in all_files if re.search(r"\d\d\d(\.[A-Z1-9])?", file)]
     if len(files)==0:
-      print(" ** JSON file for EXFOR Entry "+entry+" does not exist.")
+      if entry=="all":
+        print(" ** J4 file does not exist.")
+      else:
+        print(" ** J4 file for EXFOR Entry "+entry+" does not exist.")
   entry=entry.lower()
 
   seplvl=args.seplvl
@@ -3213,27 +3231,27 @@ def get_input(args):
       print(" ** Separation level must be 1, 2 or 3.")
   seplvl=int(seplvl)
 
-  file_out=args.file_out
+  file_c6=args.file_c6
   if seplvl==1:
-    if file_out is None:
-      file_out=input("Output C6 file [exfor.c6] ----------------------> ")
-    if file_out=="":
-      file_out="exfor.c6"
-    if os.path.isfile(file_out):
-      msg="File '"+file_out+"' exists and must be overwritten."
+    if file_c6 is None:
+      file_c6=input("Output C6 file [exfor.c6] ----------------------> ")
+    if file_c6=="":
+      file_c6="exfor.c6"
+    if os.path.isfile(file_c6):
+      msg="File '"+file_c6+"' exists and must be overwritten."
       print_error(msg,"",force0)
   else:
-    if file_out is None:
-      file_out=input("Directory of output C6 files [c6] -------> ")
-    if file_out=="":
-      file_out="c6"
-    if os.path.isdir(file_out):
-      msg="Directory '"+file_out+"' exists and must be overwritten."
+    if file_c6 is None:
+      file_c6=input("Directory of output C6 files [c6] -------> ")
+    if file_c6=="":
+      file_c6="c6"
+    if os.path.isdir(file_c6):
+      msg="Directory '"+file_c6+"' exists and must be overwritten."
       print_error(msg,"",force0)
     else:
-      msg="Directionry '"+file_out+"' does not exist and must be created."
+      msg="Directionry '"+file_c6+"' does not exist and must be created."
       print_error(msg,"",force0)
-      os.mkdir(file_out)
+      os.mkdir(file_c6)
 
   file_idx=args.file_idx
   print("output index file -----------------------> "+file_idx)
@@ -3270,7 +3288,7 @@ def get_input(args):
         print(" ** "+enewid+" is not a number. Must be a real number or integer.")
   enewid=float(enewid)
 
-  return dir_j4,file_dict,entry,file_out,seplvl,file_idx,sysout,enewid,force0,exclhi0,incder0,c4out0
+  return dir_j4,file_dict,entry,file_c6,seplvl,file_idx,sysout,enewid,force0,exclhi0,incder0,c4out0
 
 
 def is_float(s):

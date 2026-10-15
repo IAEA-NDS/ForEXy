@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.15"
 ############################################################
-# PLOTCX Ver.2026.09.26
+# PLOTCX Ver.2026.10.15
 # (Utility to plot a CX4 file by gnuplot)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -22,6 +22,12 @@ def plotcx():
 
 def main(file_cx4,file_pdf,force):
   time_start=time.time()
+
+  gnuplot=get_gnuplot_command()
+  gnuplot=gnuplot.rstrip() 
+  if shutil.which(gnuplot) is None:
+    msg="Check if the gnuplot command "+gnuplot+ " defined in gnuplot_command.txt is correct"
+    print_error_fatal(msg,"")
 
   print("plotting ... "+file_cx4)
 
@@ -68,7 +74,6 @@ def main(file_cx4,file_pdf,force):
   (logx,logy)=set_scale(dist,xmin,xmax,xfac,ymin,ymax,yfac)
 
   file_pdf=re.sub(r"cx4$","pdf",file_cx4)
-
   cmds=[
        'set terminal pdfcairo colour enh size 29.7cm, 21.0cm font "Arial,20"',
        'set output "'+file_pdf+'"',
@@ -100,12 +105,25 @@ def main(file_cx4,file_pdf,force):
 # for cmd in cmds:
 #   print(cmd)
   cmd=';'.join(cmds)
-  cmd='gnuplot -e \'{}\''.format(cmd)
+  cmd=gnuplot+' -e \'{}\''.format(cmd)
+  if os.name=="nt": # Swap ' and " on Windows
+    cmd=cmd.translate(str.maketrans({'\'': '"', '"': '\''}))
+# print(cmd)
   subprocess.run(cmd,shell=True)
 
   time_end=time.time()
   time_elapsed=format(time_end-time_start, ".2f")
   print("PLOTCX: Processing terminated normally. "+time_elapsed+" sec.\n")
+
+
+def get_gnuplot_command():
+  lines=get_file_lines("gnuplot_command.txt")
+  for line in lines:
+    if line[0:1]=="#":
+      continue
+    else:
+      gnuplot=line
+  return gnuplot
 
 
 def edit_constant(const_texts,aproj):
@@ -605,11 +623,6 @@ def get_input(args):
   print("PLOTCX (Ver."+ver+") run on "+date)
   print("-----------------------------------------")
 
-  if shutil.which('gnuplot') is None:
-    msg="Install gnuplot before running PLOTCX."
-    print_error(msg,"",force)
-    plot=False
-
   force=args.force
 
   file_cx4=args.file_cx4
@@ -637,6 +650,17 @@ def get_input(args):
   return file_cx4,file_pdf,force
 
 
+def get_file_lines(file):
+  if os.path.exists(file):
+    f=open(file, "r")
+    lines=f.readlines()
+    f.close()
+  else:
+    msg="File "+file+" does not exist."
+    print_error_fatal(msg,"")
+  return lines
+
+
 def print_error(msg,line,force):
   print("** "+msg)
   print(line)
@@ -655,6 +679,12 @@ def print_error(msg,line,force):
   if answer=="N":
     print("program terminated")
     exit()
+
+
+def print_error_fatal(msg,line):
+  print("**  "+msg)
+  print(line)
+  exit()
 
 
 if __name__ == "__main__":

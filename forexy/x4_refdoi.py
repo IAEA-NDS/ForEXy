@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.02"
 ############################################################
-# REFDOI Ver.2026.09.26
+# REFDOI Ver.2026.10.02
 # (Utility to obtain DOIs for references in EXFOR file)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -38,6 +38,7 @@ def main(file_x4,file_dict,file_doi,file_json,key_anal,email,force0):
 # Input parameters for X4TOJ4
   time_now=datetime.datetime.now()
   file_tmp= time_now.strftime('%Y%m%d%H%M%S%f')
+  data_id  = "all"  # entries to be converted by X4TOJ4
   chkrid   = False  # record identificaiton not checked in X4TOJ4
   key_keep = "REFERENCE REL-REF MONIT-REF STATUS" # keep reference keywords only
   keepflg  = False  # ignore flags at col.80 in X4TOJ4
@@ -54,7 +55,7 @@ def main(file_x4,file_dict,file_doi,file_json,key_anal,email,force0):
   fauthor=""
 
 # Conversion to J4 format by X4TOJ4
-  x4_x4toj4.main(file_x4,file_dict,file_tmp,key_keep,email,force,chkrid,add19,keepflg,outstr)
+  x4_x4toj4.main(file_x4,file_dict,"all",file_tmp,key_keep,email,force,chkrid,add19,keepflg,outstr)
   x4_json_full=read_x4json(file_tmp)
   os.remove(file_tmp)
 

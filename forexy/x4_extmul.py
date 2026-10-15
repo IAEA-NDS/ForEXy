@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.02"
 ############################################################
-# EXTMUL Ver.2026.09.26
+# EXTMUL Ver.2026.10.02
 # (Utility to extract a dataset from multiple reaction formalism)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -37,7 +37,6 @@ def main(file_inp,file_dict,data_id,file_out,force0):
   time_start=time.time()
 
   force=force0
-# data_id  = "all"  # extract all data sets in multiple reaction formalism
   chkrid   = False  # record identificaiton not checked in X4TOJ4
   key_keep =["all"] # keep all keywords in X4TOJ4 and POIPOI
   add19    = True   # add '19' to two-digit year
@@ -49,9 +48,13 @@ def main(file_inp,file_dict,data_id,file_out,force0):
 
 
 # Conversion to J4 format by X4TOJ4
+  if data_id=="all":
+    entry="all"
+  else:
+    entry=data_id[0:5]
   file_js0 = "exfor0.json"
   email    = None
-  x4_x4toj4.main(file_inp,file_dict,file_js0,key_keep,email,force,chkrid,add19,keepflg,outstr)
+  x4_x4toj4.main(file_inp,file_dict,"all",file_js0,key_keep,email,force,chkrid,add19,keepflg,outstr)
 
 # Conversion to J4 format without pointer structure by POIPOI
   if data_id=="all":

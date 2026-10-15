@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.15"
 ############################################################
-# X4TOC6 Ver.2026.09.26
+# X4TOC6 Ver.2026.10.15
 # (Utility to convert EXFOR to C6)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -33,7 +33,7 @@ def x4toc6():
   main(*get_input(args))
 
 
-def main(file_x4,file_dict,entry,file_out,seplvl,file_idx,force0,sysout0,enewid0,email0,exclhi0,incder0,outc40):
+def main(file_x4,file_dict,entry,file_c6,seplvl,file_idx,force0,sysout0,enewid0,email0,exclhi0,incder0,outc40):
   time_start=time.time()
 
   force=force0
@@ -59,7 +59,7 @@ def main(file_x4,file_dict,entry,file_out,seplvl,file_idx,force0,sysout0,enewid0
 
 # Conversion to J4 format by X4TOJ4
   file_js = "exfor.json"
-  x4_x4toj4.main(file_x4,file_dict,file_js,key_keep,email,force,chkrid,add19,keepflg,outstr)
+  x4_x4toj4.main(file_x4,file_dict,entry,file_js,key_keep,email,force,chkrid,add19,keepflg,outstr)
 
 # Conversion to J4 format without pointer structure by POIPOI
   x4_poipoi.main(file_js,file_dict,"all",dir_wrk,key_keep,force,delpoin,keep001,keepres)
@@ -79,7 +79,7 @@ def main(file_x4,file_dict,entry,file_out,seplvl,file_idx,force0,sysout0,enewid0
     print_error_fatal("The input EXFOR file does not include EXFOR# "+entry_upper+".", "")
 
 # Conversion to C6 format by J4TOC6
-  x4_j4toc6.main(dir_wrk,file_dict,entry_lower,file_out,seplvl,file_idx,sysout,enewid,force,exclhi,incder,outc4)
+  x4_j4toc6.main(dir_wrk,file_dict,entry_lower,file_c6,seplvl,file_idx,sysout,enewid,force,exclhi,incder,outc4)
 
   files=glob.glob("./"+dir_wrk+"/*")
   for file in files:
@@ -103,7 +103,7 @@ def get_args(ver):
    help="input JSON dictionary (optional, default: dict.json)", default="dict.json")
   parser.add_argument("-e", "--entry",\
    help="EXFOR Entry number")
-  parser.add_argument("-o", "--file_out",\
+  parser.add_argument("-o", "--file_c6",\
    help="output C6 file/directory")
   parser.add_argument("-l", "--seplvl",\
    help="output separation level 1, 2 or 3 (default: 3)", default="3")
@@ -169,6 +169,15 @@ def get_input(args):
     entry=input("EXFOR Entry # [22742] -------------> ")
     if entry=="":
       entry="22742"
+  if not re.compile(r"^[1-9A-Za-z]\d{4}$").search(entry):
+    print(" ** EXFOR Entry # "+entry+" is illegal.")
+  while not re.compile(r"^[1-9A-Za-z]\d{4}$").search(entry):
+    entry=input("EXFOR Entry # [22742] -------------> ")
+    if entry=="":
+      entry="22742"
+    if not re.compile(r"^[1-9A-Za-z]\d{4}$").search(entry):
+      print(" ** EXFOR Entry # "+entry+" is illegal.")
+  entry=entry.upper()
 
   seplvl=args.seplvl
   print("output separation level -----------> "+seplvl)
@@ -182,27 +191,27 @@ def get_input(args):
       print(" ** Separation level must be 1, 2 or 3.")
   seplvl=int(seplvl)
 
-  file_out=args.file_out
+  file_c6=args.file_c6
   if seplvl==1:
-    if file_out is None:
-      file_out=input("Output C6 file [exfor.c6] ---------> ")
-    if file_out=="":
-      file_out="exfor.c6"
-    if os.path.isfile(file_out):
-      msg="File '"+file_out+"' exists and must be overwritten."
+    if file_c6 is None:
+      file_c6=input("Output C6 file [exfor.c6] ---------> ")
+    if file_c6=="":
+      file_c6="exfor.c6"
+    if os.path.isfile(file_c6):
+      msg="File '"+file_c6+"' exists and must be overwritten."
       print_error(msg,"",force0)
   else:
-    if file_out is None:
-      file_out=input("Directory of output C6 files [c6] -> ")
-    if file_out=="":
-      file_out="c6"
-    if os.path.isdir(file_out):
-      msg="Directory '"+file_out+"' exists and must be overwritten."
+    if file_c6 is None:
+      file_c6=input("Directory of output C6 files [c6] -> ")
+    if file_c6=="":
+      file_c6="c6"
+    if os.path.isdir(file_c6):
+      msg="Directory '"+file_c6+"' exists and must be overwritten."
       print_error(msg,"",force0)
     else:
-      msg="Directionry '"+file_out+"' does not exist and must be created."
+      msg="Directionry '"+file_c6+"' does not exist and must be created."
       print_error(msg,"",force0)
-      os.mkdir(file_out)
+      os.mkdir(file_c6)
 
   file_idx=args.file_idx
   print("output index file -----------------> "+file_idx)
@@ -250,7 +259,7 @@ def get_input(args):
         print(" ** Input a correct email address.")
 
 
-  return file_x4,file_dict,entry,file_out,seplvl,file_idx,force0,sysout,enewid,email,exclhi0,incder0,outc40
+  return file_x4,file_dict,entry,file_c6,seplvl,file_idx,force0,sysout,enewid,email,exclhi0,incder0,outc40
 
 
 def is_float(s):

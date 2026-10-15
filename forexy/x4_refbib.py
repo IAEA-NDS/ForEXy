@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.14"
 ############################################################
-# REFBIB Ver.2026.09.26
+# REFBIB Ver.2026.10.14
 # (Utility for getting and processing CrossRef metadata)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -14,9 +14,6 @@ import re
 import requests
 import unicodedata
 import time
-from pylatexenc.latexencode import unicode_to_latex
-from spellchecker import SpellChecker
-spell = SpellChecker()
 
 def refbib():
   args=get_args(ver)
@@ -337,6 +334,8 @@ def print_exfor(file_bib,data,volume,year):
 
 def print_bibtex(file_bib,data,doi,jour,volume,year):
 
+  from pylatexenc.latexencode import unicode_to_latex
+
   f=open(file_bib,"w")
 
   f.write("@article{,\n")
@@ -611,6 +610,8 @@ def greek_to_name(symbol):
 
  
 def title_lower(title,form):
+  from spellchecker import SpellChecker
+  spell = SpellChecker()
   words=title.split()
   typos=spell.unknown(words)
   title=""

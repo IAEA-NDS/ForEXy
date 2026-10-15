@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.02"
 ############################################################
-# X4VIEW Ver.2026.09.26
+# X4VIEW Ver.2026.10.02
 # (Utility to convert EXFOR to HTML)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -68,7 +68,7 @@ def main(file_x4,file_dict,file_css,entry,file_html,email,force0,gothi0,unfor0,l
 
 # Conversion to J4 format by X4TOJ4
   file_js = "exfor.json"
-  x4_x4toj4.main(file_out,file_dict,file_js,key_keep,email,force,chkrid,add19,keepflg,outstr)
+  x4_x4toj4.main(file_out,file_dict,entry,file_js,key_keep,email,force,chkrid,add19,keepflg,outstr)
 
 # Conversion to J4 format without pointer structure by POIPOI
   x4_poipoi.main(file_js,file_dict,"all",dir_wrk,key_keep,force,delpoin,keep001,keepres)
@@ -200,7 +200,7 @@ def get_input(args):
     entry=input("EXFOR Entry # [22742] -------------> ")
     if entry=="":
       entry="22742"
-    if not re.compile(r"^[1-9A-Za-z]d{4}$").search(entry) and entry!="all":
+    if not re.compile(r"^[1-9A-Za-z]\d{4}$").search(entry):
       print(" ** EXFOR Entry # "+entry+" is illegal.")
 
   file_html=args.file_html

@@ -1,0 +1,5 @@
+# Example for Linux
+/usr/bin/gnuplot
+#
+# Example for Windows
+#C:\Projects\gnuplot\bin\gnuplot.exe

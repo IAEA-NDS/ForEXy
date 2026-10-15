@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.01"
 ############################################################
-# POIPOI Ver.2026.09.26
+# POIPOI Ver.2026.10.01
 # (Utility to remove pointer from EXFOR in JSON)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -38,7 +38,7 @@ def main(file_inp,file_dict,data_id,file_out,key_keep,force0,delpoin0,keep0010,k
   dict_json=read_dict(file_dict)
 
   found=True
-  if data_id=="all":
+  if data_id=="all" or len(data_id)==5:
     dir_out=file_out
   else:
     found=False
@@ -86,7 +86,9 @@ def main(file_inp,file_dict,data_id,file_out,key_keep,force0,delpoin0,keep0010,k
         ansan=subentry["SUBENT"]["N1"]
 
         for reaction_pointer in reaction_pointers:
-          if data_id=="all":
+          if data_id=="all" or (len(data_id)==5 and ansan[0:5]==data_id[0:5]):
+            if len(data_id)==5 and ansan[0:5]==data_id[0:5]:
+              found=True
             if reaction_pointer=="":
               file_out=dir_out+"/"+ansan[0:5].lower()+"."+ansan[5:8]+".json"
               print("** POIPOI: Processing "+ansan[0:5]+"."+ansan[5:8])
@@ -107,7 +109,9 @@ def main(file_inp,file_dict,data_id,file_out,key_keep,force0,delpoin0,keep0010,k
         respar=False
         ansan=subentry["NOSUBENT"]["N1"]
         if not keep001:
-          if data_id=="all":
+          if data_id=="all" or (len(data_id)==5 and ansan[0:5]==data_id[0:5]):
+            if len(data_id)==5 and ansan[0:5]==data_id[0:5]:
+              found=True
             file_out=dir_out+"/"+ansan[0:5].lower()+"."+ansan[5:8]+".json"
             print("** POIPOI: Processing "+ansan[0:5]+"."+ansan[5:8])
             pointer_removal(title,nsubent,"",file_out,key_keep,respar)
@@ -116,7 +120,9 @@ def main(file_inp,file_dict,data_id,file_out,key_keep,force0,delpoin0,keep0010,k
             print("** POIPOI: Processing "+data_id)
             pointer_removal(title,nsubent,"",file_out,key_keep,respar)
         else:
-          if data_id=="all":
+          if data_id=="all" or (len(data_id)==5 and ansan[0:5]==data_id[0:5]):
+            if len(data_id)==5 and ansan[0:5]==data_id[0:5]:
+              found=True
             file_out=dir_out+"/"+ansan[0:5].lower()+"."+ansan[5:8]+".json"
             print("** POIPOI: Processing "+ansan[0:5]+"."+ansan[5:8])
             pointer_removal(title,nsubent,"",file_out,key_keep,respar)
@@ -635,19 +641,19 @@ def get_input(args):
       data_id="all"
   if data_id!="all":
     data_id=data_id.upper()
-  if not re.compile(r"^[1-9A-Z]\d{4}\.\d{3}(\.[1-9A-Z])?$").search(data_id) and data_id!="all":
+  if not re.compile(r"^[1-9A-Z]\d{4}(\.\d{3}(\.[1-9A-Z])?)?$").search(data_id) and data_id!="all":
     print(" ** EXFOR Dataset ID "+data_id+" is illegal.")
-  while not re.compile(r"^[1-9A-Z]\d{4}\.\d{3}(\.[1-9A-Z])?$").search(data_id) and data_id!="all":
-    data_id=input("EXFOR Dataset ID [22742.004.1] ------> ")
+  while not re.compile(r"^[1-9A-Z]\d{4}(\.\d{3}(\.[1-9A-Z])?)?$").search(data_id) and data_id!="all":
+    data_id=input("EXFOR Dataset ID [all] --------------> ")
     if data_id=="":
       data_id="22742.004.1"
     elif data_id!="all":
       data_id=data_id.upper()
-    if not re.compile(r"^[1-9A-Z]\d{4}\.\d{3}(\.[1-9A-Z])?$").search(data_id) and data_id!="all":
+    if not re.compile(r"^[1-9A-Z]\d{4}(\.\d{3}(\.[1-9A-Z])?)?$").search(data_id) and data_id!="all":
       print(" ** EXFOR Dataset ID "+data_id+" is illegal.")
 
   file_out=args.file_out
-  if data_id=="all":
+  if data_id=="all" or len(data_id)==5:
     if file_out is None:
       file_out=input("Directory of output J4 files [j4] ---> ")
     if file_out=="":

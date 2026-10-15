@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.14"
 ############################################################
-# X4TOJ4 Ver.2026.09.26
+# X4TOJ4 Ver.2026.10.14
 # (Utility to convert EXFOR to JSON)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -24,7 +24,7 @@ def x4toj4():
   main(*get_input(args))
 
 
-def main(file_x4,file_dict,file_j4,key_keep,email0,force0,chkrid0,add190,keepflg0,outstr0):
+def main(file_x4,file_dict,data_id,file_j4,key_keep,email0,force0,chkrid0,add190,keepflg0,outstr0):
   time_start=time.time()
   global x4_json
   global email
@@ -65,7 +65,7 @@ def main(file_x4,file_dict,file_j4,key_keep,email0,force0,chkrid0,add190,keepflg
   check_first_last(lines)
 
 # Analyze lines and convert to Python dictionary
-  read_system_identifier(lines,key_keep,file_dict)
+  read_system_identifier(lines,key_keep,file_dict,data_id)
 
 # Production of JSON output
   json_out=json.dumps(x4_json,indent=2)
@@ -133,6 +133,8 @@ def get_args(ver):
    help="input EXFOR file")
   parser.add_argument("-d", "--file_dict",\
    help="input JSON Dictionary (optional, default: dict.json)", default="dict.json")
+  parser.add_argument("-e", "--data_id",\
+   help="EXFOR Entry number ('all' to process all datasets in the EXFOR file)")
   parser.add_argument("-o", "--file_j4",\
    help="output J4 file")
   parser.add_argument("-k", "--key_keep",\
@@ -185,11 +187,29 @@ def get_input(args):
   if not os.path.exists(file_dict):
     print(" ** File "+file_dict+" does not exist.")
   while not os.path.exists(file_dict):
-    file_dict=input("JSON DIctionary [dict.json] --> ")
+    file_dict=input("JSON Dictionary [dict.json] --> ")
     if file_dict=="":
       file_dict="dict.json"
     if not os.path.exists(file_dict):
       print(" ** File "+file_dict+" does not exist.")
+
+  data_id=args.data_id
+  if data_id is None:
+    data_id=input("EXFOR Entry # [all] ---------> ")
+    if data_id=="":
+      data_id="all"
+  if data_id!="all":
+    data_id=data_id.upper()
+  if not re.compile(r"^[1-9A-Z]\d{4}$").search(data_id) and data_id!="all":
+    print(" ** EXFOR Entry # "+entry+" is illegal.")
+  while not re.compile(r"^[1-9A-Z]\d{4}$").search(data_id) and data_id!="all":
+    data_id=input("EXFOR Entry # [all] ---------> ")
+    if data_id=="":
+      data_id="all"
+    elif data_id!="all":
+      data_id=data_id.upper()
+    if not re.compile(r"^[1-9A-Z]\d{4}$").search(data_id) and data_id!="all":
+      print(" ** EXFOR Entry # "+data_id+" is illegal.")
 
   file_j4=args.file_j4
   if file_j4 is None:
@@ -216,7 +236,7 @@ def get_input(args):
       if not re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$").search(email):
         print(" ** Input a correct email address.")
 
-  return file_x4,file_dict,file_j4,key_keep,email,force0,chkrid0,add190,keepflg0,outstr0
+  return file_x4,file_dict,data_id,file_j4,key_keep,email,force0,chkrid0,add190,keepflg0,outstr0
 
 
 def print_error(msg,line,force):
@@ -482,7 +502,7 @@ def check_first_last(lines):
 
 
 # Checking and extraction of system identifier lines
-def read_system_identifier(lines,key_keep,file_dict):
+def read_system_identifier(lines,key_keep,file_dict,data_id):
   sys_id="ENDENTRY"
   entry="00000"
   ansan="00000.000"
@@ -538,15 +558,9 @@ def read_system_identifier(lines,key_keep,file_dict):
       }
 
     elif keyword=="ENTRY":
-      print(line[0:66])
-
       if sys_id!="ENDENTRY" and sys_id!="ENDDICTION":
         msg="ENTRY record is not expected but detected."
         print_error_fatal(msg,line)
-      sys_id="ENTRY"
-      nentry+=1
-      subent="000"
-      nsubent=-1
       if not re.compile(r"^\s{6}[0-9A-Z]\d{4}$").search(line[11:22]):
         msg="Illegal entry #: "+line[11:22]
         print_error_3(ansan,keyword,msg,line,11,22,0)
@@ -555,6 +569,18 @@ def read_system_identifier(lines,key_keep,file_dict):
         print_error_3(ansan,keyword,msg,line,17,22,0)
 
       entry=line[17:22]
+      if data_id=="all" or data_id==entry:
+        print_entry=True
+      else:
+        print_entry=False
+        continue
+
+      print(line[0:66])
+      sys_id="ENTRY"
+      nentry+=1
+      subent="000"
+      nsubent=-1
+
       ansan=entry+".000"
       x4_json["entries"].append(None)
       x4_json["entries"][nentry]=dict()
@@ -581,6 +607,8 @@ def read_system_identifier(lines,key_keep,file_dict):
       x4_json["entries"][nentry]["subentries"]=[]
 
     elif keyword=="ENDENTRY":
+      if print_entry==False:
+        continue
       if sys_id!="ENDSUBENT" and sys_id!="NOSUBENT":
         msg="ENDENTRY record is not expected but detected."
         print_error_fatal(msg,line)
@@ -595,6 +623,8 @@ def read_system_identifier(lines,key_keep,file_dict):
         check_record_id(keyword,line,entry)
 
     elif keyword=="SUBENT":
+      if print_entry==False:
+        continue
       if sys_id!="ENTRY" and sys_id!="ENDSUBENT" and sys_id!="NOSUBENT":
         msg="SUBENT record is not expected but detected."
         print_error_fatal(msg,line)
@@ -636,6 +666,8 @@ def read_system_identifier(lines,key_keep,file_dict):
         check_record_id(keyword,line,entry)
 
     elif keyword=="ENDSUBENT":
+      if print_entry==False:
+        continue
       if subent[5:8]=="001":
         if sys_id!="ENDCOMMON" and sys_id!="NOCOMMON":
           msg="ENDSUBENT record is not expected but detected."
@@ -650,14 +682,12 @@ def read_system_identifier(lines,key_keep,file_dict):
         "N1": 0,
         "N2": 0
       }
-#     x4_json["entries"][nentry]["subentries"][nsubent]["ENDSUBENT"]={
-#       "N1": str2int(line[11:22].lstrip(),line),
-#       "N2": str2int(line[22:33].lstrip(),line)
-#     }
       if chkrid:
         check_record_id(keyword,line,entry)
 
     elif keyword=="NOSUBENT":
+      if print_entry==False:
+        continue
       if sys_id!="ENDSUBENT" and sys_id!="NOSUBENT":
           msg="NOSUBENT record is not expected but detected."
           print_error_fatal(msg,line)
@@ -694,6 +724,8 @@ def read_system_identifier(lines,key_keep,file_dict):
         check_record_id(keyword,line,entry)
 
     elif keyword=="BIB":
+      if print_entry==False:
+        continue
       if sys_id!="SUBENT":
         msg="BIB record is not expected but detected."
         print_error_fatal(msg,line)
@@ -706,12 +738,10 @@ def read_system_identifier(lines,key_keep,file_dict):
         "N1": str2int(line[11:22].lstrip(),line),
         "N2": 0
        }
-#     x4_json["entries"][nentry]["subentries"][nsubent]["BIB"]={
-#       "N1": str2int(line[11:22].lstrip(),line),
-#       "N2": str2int(line[22:33].lstrip(),line)
-#      }
 
     elif keyword=="ENDBIB":
+      if print_entry==False:
+        continue
       if sys_id!="BIB":
         msg="ENDBIB record is not expected but detected."
         print_error_fatal(msg,line)
@@ -731,12 +761,10 @@ def read_system_identifier(lines,key_keep,file_dict):
         "N1": 0,
         "N2": 0
        }
-#     x4_json["entries"][nentry]["subentries"][nsubent]["ENDBIB"]={
-#       "N1": str2int(line[11:22].lstrip(),line),
-#       "N2": str2int(line[22:33].lstrip(),line)
-#      }
 
     elif keyword=="NOBIB":
+      if print_entry==False:
+        continue
       if sys_id!="SUBENT":
         msg="NOBIB record is not expected but detected."
         print_error_fatal(msg,line)
@@ -749,6 +777,8 @@ def read_system_identifier(lines,key_keep,file_dict):
        }
 
     elif keyword=="COMMON":
+      if print_entry==False:
+        continue
       if sys_id!="ENDBIB" and sys_id!="NOBIB":
         msg="COMMON record is not expected but detected."
         print_error_fatal(msg,line)
@@ -759,12 +789,10 @@ def read_system_identifier(lines,key_keep,file_dict):
         "N1": str2int(line[11:22].lstrip(),line),
         "N2": 0
        }
-#     x4_json["entries"][nentry]["subentries"][nsubent]["COMMON"]={
-#       "N1": str2int(line[11:22].lstrip(),line),
-#       "N2": str2int(line[22:33].lstrip(),line)
-#      }
 
     elif keyword=="ENDCOMMON":
+      if print_entry==False:
+        continue
       if sys_id!="COMMON":
         msg="ENDCOMMON record is not expected but detected."
         print_error_fatal(msg,line)
@@ -775,14 +803,12 @@ def read_system_identifier(lines,key_keep,file_dict):
         "N1": 0,
         "N2": 0
        }
-#     x4_json["entries"][nentry]["subentries"][nsubent]["ENDCOMMON"]={
-#       "N1": str2int(line[11:22].lstrip(),line),
-#       "N2": str2int(line[22:33].lstrip(),line)
-#      }
 
       del t_field, n_field
 
     elif keyword=="NOCOMMON":
+      if print_entry==False:
+        continue
       if sys_id!="ENDBIB":
         msg="NOCOMMON record is not expected but detected."
         print_error_fatal(msg,line)
@@ -795,6 +821,8 @@ def read_system_identifier(lines,key_keep,file_dict):
        }
 
     elif keyword=="DATA" and sys_id!="DATA":
+      if print_entry==False:
+        continue
       if sys_id!="ENDCOMMON" and sys_id!="NOCOMMON":
         print(sys_id)
         msg="DATA record is not expected but detected."
@@ -808,6 +836,8 @@ def read_system_identifier(lines,key_keep,file_dict):
        }
 
     elif keyword=="ENDDATA":
+      if print_entry==False:
+        continue
       if sys_id!="DATA":
         msg="ENDDATA record is not expected but detected."
         print_error_fatal(msg,line)
@@ -818,15 +848,13 @@ def read_system_identifier(lines,key_keep,file_dict):
         "N1": 0,
         "N2": 0
        }
-#     x4_json["entries"][nentry]["subentries"][nsubent]["ENDDATA"]={
-#       "N1": str2int(line[11:22].lstrip(),line),
-#       "N2": str2int(line[22:33].lstrip(),line)
-#      }
 
       del t_field, n_field
 
 
     elif keyword=="NODATA":
+      if print_entry==False:
+        continue
       if sys_id!="ENDCOMMON" and sys_id!="NOCOMMON":
         msg="NODATA record is not expected but detected."
         print_error_fatal(msg,line)
@@ -839,9 +867,13 @@ def read_system_identifier(lines,key_keep,file_dict):
        }
 
     elif sys_id=="BIB": # processing of BIB contents
+      if print_entry==False:
+        continue
       (pointer,keyword,bib_text)=read_bib(ansan,keyword,pointer,bib_text,line)
 
     elif sys_id=="COMMON" or sys_id=="DATA": # processing of COMMON/DATA contents
+      if print_entry==False:
+        continue
       if "n_field" not in locals():
         t_field="heading"
         n_field=0
@@ -852,6 +884,8 @@ def read_system_identifier(lines,key_keep,file_dict):
       read_table(ansan,keyword,line,nentry,nsubent,sys_id,t_field,n_field,data_line,flag_line,msg_last,n_msg)
 
     else:
+      if print_entry==False:
+        continue
       msg="Unexpected line."
       print_error_fatal(msg,line)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.14"
 ############################################################
-# MAKCXL Ver.2026.09.26
+# MAKCXL Ver.2026.10.14
 # (Utility for production and update of CX4 file storage)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -45,21 +45,10 @@ def main(dir_c6lib,file_dict,dir_cx4lib,file_trans,file_log,file_idx,sysout,forc
       if re.compile("^[0-8a-z]$").search(dir):
         files=os.listdir(dir_c6lib+"/"+dir)
         files=sorted(files)
-        for file_c6 in files:
-          m=re.search(r"([0-8a-z]\d{4}\.\d{3}(\.[0-9a-z])?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?\d\d\d\d)\.c6$",file_c6)
-          if m:
-            ansan=m.group(1)
-            proj=m.group(3)
-            if exclhi and proj not in light_particle:
-              msg=file_c6+": Conversion skipped. Exclusion of heavy-ion reaciton data activated."
-              print_error(msg,"",force)
-              continue
-            file_c6=dir_c6lib+"/"+dir+"/"+file_c6
-            file_cx4=get_cx4_name(file_c6,dir_cx4lib,sysout)
-            x4_c6tocx.main(file_c6,file_dict,file_cx4,file_idx,sysout,force)
-            if plot:
-              file_pdf=re.sub(r"cx4$","pdf",file_cx4)
-              x4_plotcx.main(file_cx4,file_pdf,force)
+        if len(files)!=0:
+          dir_c6=dir_c6lib+"/"+dir
+          x4_c6tocx.main(dir_c6,file_dict,"all",dir_cx4lib,file_idx,sysout,force,exclhi)
+
   else:
     (tid,tdate,entries)=get_entry_number(file_trans,dir_c6lib,force)
     delete_idx(file_idx,entries)
@@ -84,18 +73,33 @@ def main(dir_c6lib,file_dict,dir_cx4lib,file_trans,file_log,file_idx,sysout,forc
         msg="Entry "+entry_out+" is in "+file_trans+" but a C6 file of this entry is not in the C6 storage. Quantity not supported by J4TOC6?"
         print_error(msg,"",force)
       else:
-        for file_c6 in files:
-          m=re.search(r"([0-8a-z]\d{4}\.\d{3}(\.[0-9a-z])?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?\d\d\d\d)\.c6$",file_c6)
-          proj=m.group(3)
-          if exclhi and proj not in light_particle:
-            msg=file_c6+": Conversion skipped. Exclusion of heavy-ion reaciton data activated."
-            print_error(msg,"",force)
-            continue
-          file_cx4=get_cx4_name(file_c6,dir_cx4lib,sysout)
-          x4_c6tocx.main(file_c6,file_dict,file_cx4,file_idx,sysout,force)
-          if plot:
-            file_pdf=re.sub(r"cx4$","pdf",file_cx4)
-            x4_plotcx.main(file_cx4,file_pdf,force)
+        dir_c6=dir_c6lib+"/"+area
+        x4_c6tocx.main(dir_c6,file_dict,entry,dir_cx4lib,file_idx,sysout,force,exclhi)
+
+  files=os.listdir(dir_cx4lib)
+  files=sorted(files)
+  for file_tmp in files:
+    m=re.search(r"^(.+?)-(.+?)-(.+?)-(.+?)-.+?\.cx4$",file_tmp)
+    if m:
+      proj=m.group(1)
+      targ=m.group(2)
+      reac=m.group(3)
+      quan=m.group(4)
+      file_cx4=dir_cx4lib+"/"+proj+"/"+targ+"/"+reac+"/"+quan+"/"+file_tmp
+      file_old=dir_cx4lib+"/"+file_tmp
+      if not os.path.isdir(dir_cx4lib+"/"+proj):
+        os.mkdir(dir_cx4lib+"/"+proj)
+      if not os.path.isdir(dir_cx4lib+"/"+proj+"/"+targ):
+        os.mkdir(dir_cx4lib+"/"+proj+"/"+targ)
+      if not os.path.isdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac):
+        os.mkdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac)
+      if not os.path.isdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac+"/"+quan):
+        os.mkdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac+"/"+quan)
+      os.rename(file_old,file_cx4)
+      if plot:
+        file_pdf=re.sub(r"cx4$","pdf",file_cx4)
+        x4_plotcx.main(file_cx4,file_pdf,force)
+
 
   if tid!=None:
     sort_idx(file_idx,entries)
@@ -104,6 +108,68 @@ def main(dir_c6lib,file_dict,dir_cx4lib,file_trans,file_log,file_idx,sysout,forc
   time_end=time.time()
   time_elapsed=format(time_end-time_start, ".2f")
   print("MAKCXL: Processing terminated normally. "+time_elapsed+" sec.\n")
+
+
+def get_cx4_name(file_c6,dir_cx4lib,sysout):
+  m=re.search(r"([0-8a-z]\d{4}\.\d{3}(\.[0-9a-z])?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?\d\d\d\d)\.c6$",file_c6)
+  ansan=m.group(1)
+  proj=m.group(3)
+  targ=m.group(4)
+  reac=m.group(5)
+  quan=m.group(6)
+  dist=m.group(7)
+  spec=m.group(8)
+  const=m.group(9)
+
+  if sysout!="OOO":
+    frame_out_qua=sysout[0:1]
+    frame_out_ang=sysout[1:2]
+    frame_out_ene=sysout[2:3]
+    if "adx" in quan and reac[0:1]!="x":
+      if dist=="angdisc" or dist=="angdisl":
+        if quan=="adxc" and frame_out_qua=="L":
+          quan="adxl"
+        elif quan=="adxl" and frame_out_qua=="C":
+          quan="adxc"
+        if dist=="angdisc" and frame_out_ang=="L":
+          dist="angdisl"
+        elif dist=="angdisl" and frame_out_ang=="C":
+          dist="angdisc"
+    elif "ddx" in quan and reac[0:1]=="x":
+      if dist=="angdisc" or dist=="angdisl":
+        if quan=="ddxc" and frame_out_qua=="L":
+          quan="ddxl"
+        elif quan=="ddxl" and frame_out_qua=="C":
+          quan="ddxc"
+        if dist=="angdisc" and frame_out_ang=="L":
+          dist="angdisl"
+        elif dist=="angdisl" and frame_out_ang=="C":
+          dist="angdisc"
+      elif dist=="enedisc" or dist=="enedisl":
+        if quan=="ddxc" and frame_out_qua=="L":
+          quan="ddxl"
+        elif quan=="ddxl" and frame_out_qua=="C":
+          quan="ddxc"
+        if dist=="enedisc" and frame_out_ene=="L":
+          dist="enedisl"
+        elif dist=="enedisl" and frame_out_ene=="C":
+          dist="enedisc"
+
+  if not os.path.isdir(dir_cx4lib+"/"+proj):
+    os.mkdir(dir_cx4lib+"/"+proj)
+  if not os.path.isdir(dir_cx4lib+"/"+proj+"/"+targ):
+    os.mkdir(dir_cx4lib+"/"+proj+"/"+targ)
+  if not os.path.isdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac):
+    os.mkdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac)
+  if not os.path.isdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac+"/"+quan):
+    os.mkdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac+"/"+quan)
+
+  ansan=ansan.upper()
+  dir_cx4=dir_cx4lib+"/"+proj+"/"+targ+"/"+reac+"/"+quan
+  base_cx4=proj+"-"+targ+"-"+reac+"-"+quan+"-"+dist+"-"+spec+"-"+const+"_"+ansan+".cx4"
+  file_cx4=dir_cx4+"/"+base_cx4
+
+  return file_cx4
 
 
 def delete_idx(file_idx,entries):
@@ -219,68 +285,6 @@ def get_entry_number(file_trans,dir_c6lib,force):
       entries.append(entry)
         
   return tid,tdate,entries
-
-
-def get_cx4_name(file_c6,dir_cx4lib,sysout):
-  m=re.search(r"([0-8a-z]\d{4}\.\d{3}(\.[0-9a-z])?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?)-(.+?\d\d\d\d)\.c6$",file_c6)
-  ansan=m.group(1)
-  proj=m.group(3)
-  targ=m.group(4)
-  reac=m.group(5)
-  quan=m.group(6)
-  dist=m.group(7)
-  spec=m.group(8)
-  const=m.group(9)
-
-  if sysout!="OOO":
-    frame_out_qua=sysout[0:1]
-    frame_out_ang=sysout[1:2]
-    frame_out_ene=sysout[2:3]
-    if "adx" in quan and reac[0:1]!="x":
-      if dist=="angdisc" or dist=="angdisl":
-        if quan=="adxc" and frame_out_qua=="L":
-          quan="adxl"
-        elif quan=="adxl" and frame_out_qua=="C":
-          quan="adxc"
-        if dist=="angdisc" and frame_out_ang=="L":
-          dist="angdisl"
-        elif dist=="angdisl" and frame_out_ang=="C":
-          dist="angdisc"
-    elif "ddx" in quan and reac[0:1]=="x":
-      if dist=="angdisc" or dist=="angdisl":
-        if quan=="ddxc" and frame_out_qua=="L":
-          quan="ddxl"
-        elif quan=="ddxl" and frame_out_qua=="C":
-          quan="ddxc"
-        if dist=="angdisc" and frame_out_ang=="L":
-          dist="angdisl"
-        elif dist=="angdisl" and frame_out_ang=="C":
-          dist="angdisc"
-      elif dist=="enedisc" or dist=="enedisl":
-        if quan=="ddxc" and frame_out_qua=="L":
-          quan="ddxl"
-        elif quan=="ddxl" and frame_out_qua=="C":
-          quan="ddxc"
-        if dist=="enedisc" and frame_out_ene=="L":
-          dist="enedisl"
-        elif dist=="enedisl" and frame_out_ene=="C":
-          dist="enedisc"
-
-  if not os.path.isdir(dir_cx4lib+"/"+proj): 
-    os.mkdir(dir_cx4lib+"/"+proj)
-  if not os.path.isdir(dir_cx4lib+"/"+proj+"/"+targ): 
-    os.mkdir(dir_cx4lib+"/"+proj+"/"+targ)
-  if not os.path.isdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac): 
-    os.mkdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac)
-  if not os.path.isdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac+"/"+quan): 
-    os.mkdir(dir_cx4lib+"/"+proj+"/"+targ+"/"+reac+"/"+quan)
-
-  ansan=ansan.upper() 
-  dir_cx4=dir_cx4lib+"/"+proj+"/"+targ+"/"+reac+"/"+quan
-  base_cx4=proj+"-"+targ+"-"+reac+"-"+quan+"-"+dist+"-"+spec+"-"+const+"_"+ansan+".cx4"
-  file_cx4=dir_cx4+"/"+base_cx4
-
-  return file_cx4
 
 
 def get_args(ver):
