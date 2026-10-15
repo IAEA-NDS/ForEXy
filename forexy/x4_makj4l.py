@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.10.02"
+ver="2026.10.15"
 ############################################################
-# MAKJ4L Ver.2026.10.02
+# MAKJ4L Ver.2026.10.15
 # (Utility for production and update of J4 file storage)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -11,6 +11,7 @@ import datetime
 import os
 import re
 import shutil
+import stat
 import time
 
 if os.path.isfile("x4_x4toj4.py"):
@@ -110,7 +111,7 @@ def clean(dir_storage):
     if os.path.isdir(dir_storage+"/"+file):
       if re.compile("^[a-z0-8]$").search(file):
         print("Directory "+dir_storage+"/"+file+" deleted")
-        shutil.rmtree(dir_storage+"/"+file)
+        shutil.rmtree(dir_storage+"/"+file, onexc=remove_readonly)
 
 
 def get_entry_number(file_trans,dir_storage):
@@ -269,6 +270,12 @@ def get_input(args):
   print("\n")
 
   return dir_storage,file_dict,dir_j4lib,file_trans,file_log,email,force0
+
+
+def remove_readonly(func, path, _):
+    "Clear the readonly bit and reattempt the removal"
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 
 def print_error_fatal(msg,line):

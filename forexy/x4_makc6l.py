@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.15"
 ############################################################
-# MAKC6L Ver.2026.09.26
+# MAKC6L Ver.2026.10.15
 # (Utility for production and update of C6 file storage)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -12,6 +12,7 @@ import glob
 import os
 import re
 import shutil
+import stat
 import time
 
 if os.path.isfile("x4_poipoi.py"):
@@ -165,7 +166,7 @@ def clean(dir_storage):
     if os.path.isdir(dir_storage+"/"+file):
       if re.compile("^[a-z0-8]$").search(file):
         print("Directory "+dir_storage+"/"+file+" deleted")
-        shutil.rmtree(dir_storage+"/"+file)
+        shutil.rmtree(dir_storage+"/"+file, onexc=remove_readonly)
 
 
 def get_entry_number(file_trans,dir_j4lib):
@@ -427,6 +428,12 @@ def is_float(s):
     return True
   except ValueError:
     return False
+
+
+def remove_readonly(func, path, _):
+    "Clear the readonly bit and reattempt the removal"
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 
 def print_error_fatal(msg,line):

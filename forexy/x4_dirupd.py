@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.15"
 ############################################################
-# DIRUPD Ver.2026.09.26
+# DIRUPD Ver.2026.10.15
 # (Utility to update EXFOR entry local storage)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -11,6 +11,7 @@ import datetime
 import os
 import re
 import shutil
+import stat
 import time
 
 def dirupd():
@@ -40,7 +41,7 @@ def main(file_trans,dir_storage,file_log,force0,cut660):
 
   else:
     if os.path.isdir("tmp"):
-      shutil.rmtree('tmp')
+      shutil.rmtree('tmp', onexc=remove_readonly)
     os.mkdir('tmp')
     (ok,file_lst)=analyse(file_trans,dir_storage,tid_new)
    
@@ -322,7 +323,7 @@ def write_exfor(file_lst,dir_storage):
       print("deleting ... tmp/"+exfor_new)
       os.remove("tmp/"+exfor_new)
 
-  shutil.rmtree('tmp')
+  shutil.rmtree('tmp', onexc=remove_readonly)
 
   return answer
 
@@ -497,6 +498,12 @@ def check_tid_new(tid_new,file_log):
   elif ok==0:
     msg="The log file indicates "+tid_new+" is inconsistent with the one loaded last time for this area: \n     "+line_out
     print_error(msg,"",force)
+
+
+def remove_readonly(func, path, _):
+    "Clear the readonly bit and reattempt the removal"
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 
 def print_error_fatal(msg,line):

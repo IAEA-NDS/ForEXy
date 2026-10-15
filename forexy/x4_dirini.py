@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.09.26"
+ver="2026.10.15"
 ############################################################
-# DIRINI Ver.2026.09.26
+# DIRINI Ver.2026.10.15
 # (Utility to initialize EXFOR entry local storage)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -11,6 +11,7 @@ import datetime
 import os
 import re
 import shutil
+import stat
 import time
 
 
@@ -39,6 +40,7 @@ def main(file_lib,dir_storage,file_log,force0,cut660):
     time_elapsed=format(time_end-time_start, ".2f")
     print("DIRINI: Processing terminated normally. "+time_elapsed+" sec.\n")
 
+
 # delete directory having single character name
 def clean(dir_storage):
   files=os.listdir(dir_storage)
@@ -46,7 +48,7 @@ def clean(dir_storage):
     if os.path.isdir(dir_storage+"/"+file):
       if re.compile("^[a-zA-Z0-9]$").search(file):
         print("Directory "+dir_storage+"/"+file+" deleted")
-        shutil.rmtree(dir_storage+"/"+file)
+        shutil.rmtree(dir_storage+"/"+file, onexc=remove_readonly)
 
 
 # extraction of each entry and its output to *.txt
@@ -259,6 +261,12 @@ def update_log(file_log,tid_new,tdate_new,file_lib):
   line=seq_out+" "+stamp+" "+tid_new+"      "+tdate_new+"          "+file_lib+"\n"  
   f.write(line)
   f.close()
+
+
+def remove_readonly(func, path, _):
+    "Clear the readonly bit and reattempt the removal"
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 
 def print_error_fatal(msg,line):
