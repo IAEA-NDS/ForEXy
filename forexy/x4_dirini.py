@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.10.15"
+ver="2026.10.16"
 ############################################################
-# DIRINI Ver.2026.10.15
+# DIRINI Ver.2026.10.16
 # (Utility to initialize EXFOR entry local storage)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -48,7 +48,7 @@ def clean(dir_storage):
     if os.path.isdir(dir_storage+"/"+file):
       if re.compile("^[a-zA-Z0-9]$").search(file):
         print("Directory "+dir_storage+"/"+file+" deleted")
-        shutil.rmtree(dir_storage+"/"+file, onexc=remove_readonly)
+        shutil.rmtree(dir_storage+"/"+file, onerror=remove_readonly)
 
 
 # extraction of each entry and its output to *.txt
@@ -263,10 +263,9 @@ def update_log(file_log,tid_new,tdate_new,file_lib):
   f.close()
 
 
-def remove_readonly(func, path, _):
-    "Clear the readonly bit and reattempt the removal"
-    os.chmod(path, stat.S_IWRITE)
-    func(path)
+def remove_readonly(func, path, exc_info):
+  os.chmod(path, stat.S_IWRITE)
+  func(path)
 
 
 def print_error_fatal(msg,line):

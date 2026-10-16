@@ -73,7 +73,6 @@ def main(file_cx4,file_pdf,force):
 
   (logx,logy)=set_scale(dist,xmin,xmax,xfac,ymin,ymax,yfac)
 
-  file_pdf=re.sub(r"cx4$","pdf",file_cx4)
   cmds=[
        'set terminal pdfcairo colour enh size 29.7cm, 21.0cm font "Arial,20"',
        'set output "'+file_pdf+'"',

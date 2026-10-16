@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-ver="2026.10.15"
+ver="2026.10.16"
 ############################################################
-# MAKC6L Ver.2026.10.15
+# MAKC6L Ver.2026.10.16
 # (Utility for production and update of C6 file storage)
 #
 # Naohiko Otuka (IAEA Nuclear Data Section)
@@ -166,7 +166,7 @@ def clean(dir_storage):
     if os.path.isdir(dir_storage+"/"+file):
       if re.compile("^[a-z0-8]$").search(file):
         print("Directory "+dir_storage+"/"+file+" deleted")
-        shutil.rmtree(dir_storage+"/"+file, onexc=remove_readonly)
+        shutil.rmtree(dir_storage+"/"+file, onerror=remove_readonly)
 
 
 def get_entry_number(file_trans,dir_j4lib):
@@ -430,10 +430,9 @@ def is_float(s):
     return False
 
 
-def remove_readonly(func, path, _):
-    "Clear the readonly bit and reattempt the removal"
-    os.chmod(path, stat.S_IWRITE)
-    func(path)
+def remove_readonly(func, path, exc_info):
+  os.chmod(path, stat.S_IWRITE)
+  func(path)
 
 
 def print_error_fatal(msg,line):

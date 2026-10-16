@@ -15,6 +15,7 @@ The following input files are available on the ForEXy zipped file on the [NRDC S
 * Heading and quantity mapping files (dict_arc_new.324, dict_arc_new.336)
 * CSS file for J4VIEW and X4VIEW (e.g., exfor.css)
 * Technical term dictionary for SPELLS (e.g., x4_spells.dic)
+* gnuplot command setting file (gnuplot_command.txt)
 
 ## Installation
 ```
